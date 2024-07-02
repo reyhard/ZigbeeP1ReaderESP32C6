@@ -483,18 +483,19 @@ void sendDataToBroker()
         ESP_LOGI(TAG,"Sending: %s value: %ld", telegramObjects[i].name, telegramObjects[i].value);
 #endif
             if(telegramObjects[i].attributeID == P1_ATTRIBUTE_POWER_3L) {
-                uint56_t report;
+                /*uint56_t report;
                 telegramObjects[7].sendData = false;
                 telegramObjects[8].sendData = false;
                 telegramObjects[9].sendData = false;
                 report.high = telegramObjects[7].value;
                 report.mid = telegramObjects[8].value;
                 report.low = telegramObjects[9].value;
-                sendMetric3(report, telegramObjects[i].attributeID);
+                sendMetric3(report, telegramObjects[i].attributeID);*/
 
             }else{
                 sendMetric(telegramObjects[i].value, telegramObjects[i].attributeID);
                 telegramObjects[i].sendData = false;
+                vTaskDelay(500 / portTICK_PERIOD_MS);
             }
         }
     }
@@ -503,7 +504,7 @@ void sendDataToBroker()
 static void esp_delayed_off(void *pvParameters)
 {
     gpio_set_level(BLINK_GPIO, 0);
-    vTaskDelay((1500) / portTICK_PERIOD_MS);
+    vTaskDelay((500) / portTICK_PERIOD_MS);
     gpio_set_level(BLINK_GPIO, 1);
 
     vTaskDelete(NULL);
@@ -522,10 +523,10 @@ bool readP1Serial()
         int len = uart_read_bytes(UART_NUM, telegram_full, P1_MAXLINELENGTH, 20 / 1000);
         if (len > 0) {
             
-            xTaskCreate(esp_delayed_off, "Delayed_Off", 4096, NULL, 3, NULL);
+            //xTaskCreate(esp_delayed_off, "Delayed_Off", 4096, NULL, 3, NULL);
             // Null-terminate the data and print
             //telegram[len] = '\0';
-                // Initialize a copy of the telegram to tokenize
+            // Initialize a copy of the telegram to tokenize
             char *telegram_copy = strdup((char *)telegram_full);
             if (telegram_copy == NULL) {
 #ifdef DEBUG_P1
@@ -577,18 +578,19 @@ bool readP1Serial()
 
 void mainTask()
 {
+    int64_t now = 0;
     while (1)
     {
         if (connected)
         {
-            long now = esp_timer_get_time();
+            now = esp_timer_get_time() / 1000;
             // Check if we want a full update of all the data including the unchanged data.
             if (now - LAST_FULL_UPDATE_SENT > UPDATE_FULL_INTERVAL)
             {
                 for (int i = 0; i < NUMBER_OF_READOUTS; i++)
                 {
                     telegramObjects[i].sendData = true;
-                    LAST_FULL_UPDATE_SENT = esp_timer_get_time();
+                    LAST_FULL_UPDATE_SENT = esp_timer_get_time() / 1000;
                 }
             }
 
@@ -597,13 +599,17 @@ void mainTask()
                 //ESP_LOGI(TAG, "Last update %ld now: %ld, update interval: %ld", now - LAST_UPDATE_SENT, now, updateInterval);
                 if (readP1Serial())
                 {
-                    LAST_UPDATE_SENT = esp_timer_get_time();
+                    LAST_UPDATE_SENT = esp_timer_get_time() / 1000;
                     sendDataToBroker();
+                    xTaskCreate(esp_delayed_off, "Delayed_Off", 4096, NULL, 3, NULL);
                     vTaskDelay(500 / portTICK_PERIOD_MS);
                 }
             }else{
                 uart_flush(UART_NUM);
+                uart_flush_input(UART_NUM);
             }
+        }else{
+            gpio_set_level(BLINK_GPIO, 0);
         }
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
@@ -625,9 +631,9 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
             
         case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
             if (message->attribute.id == ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U8) {
-                updateInterval = (message->attribute.data.value ? *(uint8_t *)message->attribute.data.value : updateInterval) * 1000 * 1000;
+                updateInterval = (message->attribute.data.value ? *(uint8_t *)message->attribute.data.value : updateInterval) * 1000;
                 //light_driver_set_level((uint8_t)light_level);
-                ESP_LOGI(TAG, "Update interval changed %ld", updateInterval);
+                ESP_LOGI(TAG, "Update interval changed %lld", updateInterval);
             } else {
                 ESP_LOGW(TAG, "Level Control cluster data: attribute(0x%x), type(0x%x)", message->attribute.id, message->attribute.data.type);
             }
@@ -856,9 +862,10 @@ void app_main(void)
     };
 
     // Install UART driver
-    uart_driver_install(UART_NUM, P1_MAXLINELENGTH * 2, 0, 0, NULL, 0);
+    uart_driver_install(UART_NUM, P1_MAXLINELENGTH, 0, 0, NULL, 0);
     uart_param_config(UART_NUM, &uart_config);
     uart_set_pin(UART_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    uart_set_line_inverse(UART_NUM, UART_SIGNAL_RXD_INV);
 
     // Setup Zigbee
     esp_zb_platform_config_t config = {
@@ -873,5 +880,5 @@ void app_main(void)
     //xTaskCreate(demo_task, "demo_task", 4096, NULL, 1, NULL);
     //xTaskCreate(update_attribute, "Update_attribute_value", 4096, NULL, 5, NULL);
     xTaskCreate(mainTask, "Main_Task", 4096, NULL, 5, NULL);
-    xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
+    xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 6, NULL);
 }
