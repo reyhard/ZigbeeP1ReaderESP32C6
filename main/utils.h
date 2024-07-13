@@ -21,29 +21,6 @@ unsigned int crc16(unsigned int crc, unsigned char *buf, int len)
     return crc;
 }
 
-
-uint16_t crc16_full (const uint8_t *data, unsigned int length)
-{
-    // Polynomial: x^16 + x^15 + x^2 + 1 (0xa001)
-	
-    uint16_t crc = 0;
-
-    while (length--) {
-    	
-		int i;
-	
-		crc ^= *data++;
-		for (i = 0 ; i < 8 ; ++i) {
-			if (crc & 1)
-				crc = (crc >> 1) ^ 0xa001;
-			else
-				crc = (crc >> 1);
-		}    			
-    }
-    
-    return crc;
-}
-
 bool isNumber(char *res, int len)
 {
     for (int i = 0; i < len; i++)

@@ -25,20 +25,6 @@ int64_t LAST_UPDATE_SENT = 0;
 int64_t LAST_FULL_UPDATE_SENT = 0;
 
 char telegram[P1_MAXLINELENGTH];
-uint8_t telegram_full[P1_MAXLINELENGTH];
-
-/*struct TelegramDecodedObject
-{
-  String name;
-  uint16_t attributeID;
-  long value;
-  long sendThreshold = 0;
-  char code[16];
-  char startChar = '(';
-  char endChar = ')';
-  bool sendData = false;
-};*/
-
 typedef struct {
     char name[50];  // Adjust the size as needed
     uint16_t attributeID;

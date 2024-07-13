@@ -337,7 +337,6 @@ static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
 {
     ESP_ERROR_CHECK(esp_zb_bdb_start_top_level_commissioning(mode_mask));
 }
-
 /* Manual reporting atribute to coordinator */
 static void reportAttribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length)
 {
@@ -352,111 +351,22 @@ static void reportAttribute(uint8_t endpoint, uint16_t clusterID, uint16_t attri
         .attributeID = attributeID,
         .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
     };
-    esp_zb_zcl_attr_t *value_r = esp_zb_zcl_get_attribute(endpoint, clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attributeID);
-    memcpy(value_r->data_p, value, value_length);
+    // mem copy is no longer necessary after esp_zb_zcl_set_attribute_val last attribute was set to false
+    //esp_zb_zcl_attr_t *value_r = esp_zb_zcl_get_attribute(endpoint, clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attributeID);
+    //memcpy(value_r->data_p, value, value_length);
     esp_zb_zcl_report_attr_cmd_req(&cmd);
-}
-
-/* Task for update attribute value */
-void update_attribute()
-{
-    while(1)
-    {
-        if (connected)
-        {
-            /* Write new temperature value */
-            esp_zb_lock_acquire(portMAX_DELAY);
-            esp_zb_zcl_status_t state_tmp = esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_TEMP_MEASUREMENT_VALUE_ID, &temperature, false);
-            esp_zb_lock_release();
-
-            esp_zb_lock_acquire(portMAX_DELAY);
-            esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, 2, &temperature, true);
-            esp_zb_lock_release();
-            
-            esp_zb_lock_acquire(portMAX_DELAY);
-            reportAttribute(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, 2, &temperature, 2);
-            esp_zb_lock_release();
-
-            /* Check for error */
-            if(state_tmp != ESP_ZB_ZCL_STATUS_SUCCESS)
-            {
-                ESP_LOGE(TAG, "Setting temperature attribute failed!");
-            }
-            
-            /* Write new humidity value */
-            esp_zb_lock_acquire(portMAX_DELAY);
-            esp_zb_zcl_status_t state_hum = esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_REL_HUMIDITY_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_REL_HUMIDITY_MEASUREMENT_VALUE_ID, &humidity, false);
-            esp_zb_lock_release();
-
-            esp_zb_lock_acquire(portMAX_DELAY);
-            esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, 3, &humidity, true);
-            esp_zb_lock_release();
-            
-            esp_zb_lock_acquire(portMAX_DELAY);
-            reportAttribute(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, 3, &humidity, 2);
-            esp_zb_lock_release();
-
-            /* Check for error */
-            if(state_hum != ESP_ZB_ZCL_STATUS_SUCCESS)
-            {
-                ESP_LOGE(TAG, "Setting humidity attribute failed!");
-            }
-
-            /* Write new pressure value */
-            esp_zb_lock_acquire(portMAX_DELAY);
-            esp_zb_zcl_status_t state_press = esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_PRESSURE_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_PRESSURE_MEASUREMENT_VALUE_ID, &pressure, false);
-            esp_zb_lock_release();
-
-            esp_zb_lock_acquire(portMAX_DELAY);
-            esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, 2, &pressure, true);
-            esp_zb_lock_release();
-
-            esp_zb_lock_acquire(portMAX_DELAY);
-            reportAttribute(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, 2, &pressure, 2);
-            esp_zb_lock_release();
-
-            /* Check for error */
-            if(state_press != ESP_ZB_ZCL_STATUS_SUCCESS)
-            {
-                ESP_LOGE(TAG, "Setting pressure attribute failed!");
-            }
-            
-            if (CO2_value != 0)
-            {
-                /* Write new CO2_value value */
-                esp_zb_lock_acquire(portMAX_DELAY);
-                esp_zb_zcl_status_t state_co2 = esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, 0, &CO2_value, true);
-                esp_zb_lock_release();
-
-                /* Check for error */
-                if(state_co2 != ESP_ZB_ZCL_STATUS_SUCCESS)
-                {
-                    ESP_LOGE(TAG, "Setting CO2_value attribute failed!");
-                }else{
-                    ESP_LOGE(TAG, "Setting CO2_value succes!");
-
-                }
-
-                /* CO2 Cluster is custom and we must report it manually*/
-                
-                esp_zb_lock_acquire(portMAX_DELAY);
-                reportAttribute(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, 0, &CO2_value, 2);
-                esp_zb_lock_release();
-            }
-        }
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
-    }
 }
 
 // Send single value
 void sendMetric(uint32_t data, uint16_t attribute)
 {
     esp_zb_lock_acquire(portMAX_DELAY);
-    esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute, &data, true);
+    //esp_zb_zcl_status_t state_tmp = esp_zb_zcl_set_manufacturer_attribute_val(SENSOR_ENDPOINT, ENERGY_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, 0xFFFF, attribute, &data, true);
+    esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, ENERGY_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute, &data, false);
     esp_zb_lock_release();
 
     esp_zb_lock_acquire(portMAX_DELAY);
-    reportAttribute(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, attribute, (uint32_t *)&data, sizeof(data));
+    reportAttribute(SENSOR_ENDPOINT, ENERGY_CUSTOM_CLUSTER, attribute, (uint32_t *)&data, sizeof(data));
     esp_zb_lock_release();
 }
 
@@ -464,11 +374,11 @@ void sendMetric(uint32_t data, uint16_t attribute)
 void sendMetric3(uint56_t data, uint16_t attribute)
 {
     esp_zb_lock_acquire(portMAX_DELAY);
-    esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute, &data, true);
+    esp_zb_zcl_set_attribute_val(SENSOR_ENDPOINT, ENERGY_CUSTOM_CLUSTER, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute, &data, false);
     esp_zb_lock_release();
 
     esp_zb_lock_acquire(portMAX_DELAY);
-    reportAttribute(SENSOR_ENDPOINT, CO2_CUSTOM_CLUSTER, attribute, &data, sizeof(data));
+    reportAttribute(SENSOR_ENDPOINT, ENERGY_CUSTOM_CLUSTER, attribute, &data, sizeof(data));
     esp_zb_lock_release();
 }
 
@@ -495,7 +405,6 @@ void sendDataToBroker()
             }else{
                 sendMetric(telegramObjects[i].value, telegramObjects[i].attributeID);
                 telegramObjects[i].sendData = false;
-                vTaskDelay(500 / portTICK_PERIOD_MS);
             }
         }
     }
@@ -519,13 +428,13 @@ bool readP1Serial()
 #ifdef DEBUG_P1
         ESP_LOGI(TAG, "Serial is available");
 #endif
-        memset(telegram_full, 0, sizeof(telegram_full));
+        //memset(telegram_full, 0, sizeof(telegram_full));
+        uint8_t* telegram_full = (uint8_t*) malloc(P1_MAXLINELENGTH);
+        memset(telegram_full, 0, P1_MAXLINELENGTH);
         int len = uart_read_bytes(UART_NUM, telegram_full, P1_MAXLINELENGTH, 20 / 1000);
         if (len > 0) {
-            
             //xTaskCreate(esp_delayed_off, "Delayed_Off", 4096, NULL, 3, NULL);
-            // Null-terminate the data and print
-            //telegram[len] = '\0';
+            
             // Initialize a copy of the telegram to tokenize
             char *telegram_copy = strdup((char *)telegram_full);
             if (telegram_copy == NULL) {
@@ -534,18 +443,14 @@ bool readP1Serial()
 #endif
                 return false;
             }
-            uint16_t crc_code = crc16_full(telegram_full, len - 4);
-            //printf("Parsing: %s crc %d\n", telegram_full, crc_code);
             
             // Tokenize the telegram by line
             char *line = strtok(telegram_copy, "\n");
-            while (line != NULL) {
+            while (line != NULL) 
+            {
 #ifdef DEBUG_P1
                 ESP_LOGI(TAG, "Line: %s\n", line);
 #endif                
-                /*if(strcmp(line, " ") == 0) {
-                    line = "";;
-                }*/
                 // Process each line here as needed
                 memset(telegram, 0, sizeof(telegram));
                 //strcpy(line, telegram);
@@ -555,7 +460,6 @@ bool readP1Serial()
 
                 telegram[line_len] = '\r\n';
                 telegram[line_len + 1] = '\0';
-                //telegram[P1_MAXLINELENGTH - 1] = '\0';  // Ensure null termination
                 bool result = decodeTelegram(line_len + 1);
 
 #ifdef DEBUG_P1
@@ -570,8 +474,8 @@ bool readP1Serial()
 
             // Free the allocated memory
             free(telegram_copy);
-            
         }
+        free(telegram_full);
     }
     return false;
 }
@@ -593,7 +497,13 @@ void mainTask()
                     LAST_FULL_UPDATE_SENT = esp_timer_get_time() / 1000;
                 }
             }
-
+            /*if (now > 3600000)
+            {
+                // intentionally crashing after 60 minutes
+                esp_zb_lock_acquire(portMAX_DELAY);
+                reportAttribute(SENSOR_ENDPOINT, ENERGY_CUSTOM_CLUSTER, 343, &now, sizeof(now));
+                esp_zb_lock_release();
+            }*/
             if (now - LAST_UPDATE_SENT > updateInterval)
             {
                 //ESP_LOGI(TAG, "Last update %ld now: %ld, update interval: %ld", now - LAST_UPDATE_SENT, now, updateInterval);
@@ -778,15 +688,15 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_attribute_list_t *esp_zb_on_off_cluster = esp_zb_on_off_cluster_create(&on_off_cfg);
 
     esp_zb_level_cluster_cfg_t level_cfg;
-    level_cfg.current_level = 3;
+    level_cfg.current_level = 5;
     esp_zb_attribute_list_t *esp_zb_level_cluster = esp_zb_level_cluster_create(&level_cfg);
 
     /* Custom cluster for CO2 ( standart cluster not working), solution only for HOMEd */
     const uint16_t attr_id = 0;
     const uint8_t attr_type = ESP_ZB_ZCL_ATTR_TYPE_U32;
-    const uint8_t attr_access = ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING;
+    const uint8_t attr_access = ESP_ZB_ZCL_ATTR_ACCESS_REPORTING;
     
-    esp_zb_attribute_list_t *custom_co2_attributes_list = esp_zb_zcl_attr_list_create(CO2_CUSTOM_CLUSTER);
+    esp_zb_attribute_list_t *custom_co2_attributes_list = esp_zb_zcl_attr_list_create(ENERGY_CUSTOM_CLUSTER);
     esp_zb_custom_cluster_add_custom_attr(custom_co2_attributes_list, 0, attr_type, attr_access, &undefined_value);
     esp_zb_custom_cluster_add_custom_attr(custom_co2_attributes_list, 1, attr_type, attr_access, &undefined_value);
     esp_zb_custom_cluster_add_custom_attr(custom_co2_attributes_list, 2, attr_type, attr_access, &undefined_value);
@@ -878,7 +788,6 @@ void app_main(void)
     setupDataReadout();
 
     //xTaskCreate(demo_task, "demo_task", 4096, NULL, 1, NULL);
-    //xTaskCreate(update_attribute, "Update_attribute_value", 4096, NULL, 5, NULL);
     xTaskCreate(mainTask, "Main_Task", 4096, NULL, 5, NULL);
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 6, NULL);
 }

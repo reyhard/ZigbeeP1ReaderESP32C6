@@ -49,14 +49,13 @@
 #define ESP_TEMP_SENSOR_MAX_VALUE       (80)    /* Local sensor max measured value (degree Celsius) */
 
 #define SENSOR_ENDPOINT                 1
-#define CO2_CUSTOM_CLUSTER              0xFFF2                                /* Custom cluster used because standart cluster not working*/
+#define ENERGY_CUSTOM_CLUSTER           0xFFF2                                /* Custom cluster used because standart cluster not working*/
 #define ESP_ZB_PRIMARY_CHANNEL_MASK     ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK  /* Zigbee primary channel mask use in the example */
 #define OTA_UPGRADE_MANUFACTURER        0x1001                                /* The attribute indicates the file version of the downloaded image on the device*/
 #define OTA_UPGRADE_IMAGE_TYPE          0x1011                                /* The attribute indicates the value for the manufacturer of the device */
 #define OTA_UPGRADE_FILE_VERSION        0x01010101                            /* The attribute indicates the file version of the running firmware image on the device */
 #define OTA_UPGRADE_HW_VERSION          0x0101                                /* The parameter indicates the version of hardware */
 #define OTA_UPGRADE_MAX_DATA_SIZE       64                                    /* The parameter indicates the maximum data size of query block image */
-#define MODEL_NAME                      "Air Sensor 1.0"
 #define FIRMWARE_VERSION                "ver-0.1"
 
 #define MANUFACTURER_NAME               "\x02""Espresiff"
